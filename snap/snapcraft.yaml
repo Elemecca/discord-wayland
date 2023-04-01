@@ -1,4 +1,4 @@
-name: discord
+name: discord-wayland
 base: core22
 adopt-info: discord
 summary: Chat for Communities and Friends
@@ -6,7 +6,7 @@ description: |
   Discord is the easiest way to communicate over voice, video and text.
   Chat, hang out, and stay close with your friends and communities.
 
-grade: stable
+grade: devel
 confinement: strict
 assumes:
 - snapd2.54
@@ -39,6 +39,20 @@ parts:
       install -m755 -D -t $CRAFT_PART_INSTALL/bin disable-updater.sh
     stage-packages:
       - jq
+
+  launch-script:
+    plugin: nil
+    override-pull: |
+      cat <<'EOF' > launch-discord.sh
+      #!/bin/bash
+      opts="--use-tray-icon --no-sandbox --disable-seccomp-filter-sandbox"
+      if [ -n "$WAYLAND_DISPLAY" ]; then
+          opts="$opts --enable-features=UseOzonePlatform --ozone-platform=wayland"
+      fi
+      exec "$SNAP/usr/share/discord/Discord" $opts
+      EOF
+    override-build: |
+      install -m755 -D -t $CRAFT_PART_INSTALL/bin launch-discord.sh
 
   discord:
     plugin: nil
@@ -81,9 +95,9 @@ plugs:
     private: true
 
 apps:
-  discord:
+  discord-wayland:
     extensions: [gnome]
-    command: usr/share/discord/Discord --use-tray-icon --no-sandbox --disable-seccomp-filter-sandbox
+    command: bin/launch-discord.sh
     command-chain: [bin/disable-updater.sh]
     autostart: discord.desktop
     desktop: usr/share/applications/discord.desktop
@@ -91,8 +105,6 @@ apps:
       # Correct the TMPDIR path for Chromium Framework/Electron to
       # ensure libappindicator has readable resources
       TMPDIR: $XDG_RUNTIME_DIR
-      # Fallback to XWayland if running in a Wayland session.
-      DISABLE_WAYLAND: 1
       GTK_USE_PORTAL: 1
     plugs:
       - audio-playback
@@ -109,3 +121,5 @@ apps:
       - shmem
       - system-observe
       - unity7
+      - wayland
+
